@@ -26,8 +26,8 @@ pipeline {
         stage('Deploy') {
             steps {
                 echo 'Deploying stack with Docker Compose...'
-                sh 'docker compose -f ./flask-mongo-pipeline/docker-compose.yml down || true'
-                sh 'docker compose -f ./flask-mongo-pipeline/docker-compose.yml up -d'
+                sh 'cd flask-mongo-pipeline && docker compose down || true'
+                sh 'cd flask-mongo-pipeline && docker compose up -d'
             }
         }
     }
