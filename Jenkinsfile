@@ -12,7 +12,7 @@ pipeline {
         stage('Build') {
             steps {
                 echo 'Building Docker image...'
-                sh 'docker build -t usf-flask-app:latest ./app'
+                sh 'docker build -t usf-flask-app:latest ./flask-mongo-pipeline/app'
             }
         }
 
@@ -26,8 +26,8 @@ pipeline {
         stage('Deploy') {
             steps {
                 echo 'Deploying stack with Docker Compose...'
-                sh 'docker compose down || true'
-                sh 'docker compose up -d'
+                sh 'docker compose -f ./flask-mongo-pipeline/docker-compose.yml down || true'
+                sh 'docker compose -f ./flask-mongo-pipeline/docker-compose.yml up -d'
             }
         }
     }
