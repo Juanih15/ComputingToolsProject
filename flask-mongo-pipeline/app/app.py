@@ -27,6 +27,7 @@ def home():
             "GET /tasks": "list all tasks",
             "POST /tasks": "create a task (JSON: {title, description?})",
             "GET /tasks/<id>": "get a single task",
+            "PUT /tasks/<id>": "update a task (JSON: {title?, description?})",
             "DELETE /tasks/<id>": "delete a task",
         }
     })
@@ -89,6 +90,47 @@ def get_task(task_id):
     if not doc:
         return jsonify({"error": "task not found"}), 404
 
+    return jsonify({
+        "id": str(doc["_id"]),
+        "title": doc["title"],
+        "description": doc.get("description", ""),
+        "created_at": doc["created_at"].isoformat(),
+    })
+
+
+# Added PUT endpoint to update existing tasks
+# Allows partial updates - you can update just title, just description, or both
+@app.route("/tasks/<task_id>", methods=["PUT"])
+def update_task(task_id):
+    data = request.get_json(silent=True)
+    if not data:
+        return jsonify({"error": "no data provided"}), 400
+
+    db = get_db()
+    try:
+        # Build update dictionary with only the fields provided
+        update_fields = {}
+        if "title" in data:
+            update_fields["title"] = data["title"]
+        if "description" in data:
+            update_fields["description"] = data["description"]
+        
+        if not update_fields:
+            return jsonify({"error": "no valid fields to update"}), 400
+        
+        # Update only the specified fields using MongoDB $set operator
+        result = db.tasks.update_one(
+            {"_id": ObjectId(task_id)},
+            {"$set": update_fields}
+        )
+    except Exception:
+        return jsonify({"error": "invalid task id"}), 400
+
+    if result.matched_count == 0:
+        return jsonify({"error": "task not found"}), 404
+
+    # Fetch and return the updated task
+    doc = db.tasks.find_one({"_id": ObjectId(task_id)})
     return jsonify({
         "id": str(doc["_id"]),
         "title": doc["title"],
