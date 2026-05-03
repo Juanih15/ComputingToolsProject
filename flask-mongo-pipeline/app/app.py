@@ -24,7 +24,7 @@ def home():
         "endpoints": {
             "GET /": "this page",
             "GET /health": "service + DB health check",
-            "GET /tasks": "list all tasks",
+            "GET /tasks": "list all tasks (optional: ?status=pending|completed)",
             "POST /tasks": "create a task (JSON: {title, description?})",
             "GET /tasks/<id>": "get a single task",
             "PUT /tasks/<id>": "update a task (JSON: {title?, description?})",
@@ -46,15 +46,25 @@ def health():
     return jsonify({"status": "ok", "mongo": mongo_status})
 
 
+# Added query parameter to filter tasks by status
 @app.route("/tasks", methods=["GET"])
 def list_tasks():
     db = get_db()
+    # Get optional status filter from query parameters
+    status_filter = request.args.get("status")
+    
+    # Build query based on filter
+    query = {}
+    if status_filter:
+        query["status"] = status_filter
+    
     tasks = []
-    for doc in db.tasks.find().sort("created_at", -1):
+    for doc in db.tasks.find(query).sort("created_at", -1):
         tasks.append({
             "id": str(doc["_id"]),
             "title": doc["title"],
             "description": doc.get("description", ""),
+            "status": doc.get("status", "pending"),
             "created_at": doc["created_at"].isoformat(),
         })
     return jsonify(tasks)
@@ -70,6 +80,7 @@ def create_task():
     doc = {
         "title": data["title"],
         "description": data.get("description", ""),
+        "status": data.get("status", "pending"),  # Default status is pending
         "created_at": datetime.now(timezone.utc),
     }
     result = db.tasks.insert_one(doc)
@@ -94,6 +105,7 @@ def get_task(task_id):
         "id": str(doc["_id"]),
         "title": doc["title"],
         "description": doc.get("description", ""),
+        "status": doc.get("status", "pending"),
         "created_at": doc["created_at"].isoformat(),
     })
 
@@ -114,6 +126,8 @@ def update_task(task_id):
             update_fields["title"] = data["title"]
         if "description" in data:
             update_fields["description"] = data["description"]
+        if "status" in data:
+            update_fields["status"] = data["status"]
         
         if not update_fields:
             return jsonify({"error": "no valid fields to update"}), 400
@@ -135,6 +149,7 @@ def update_task(task_id):
         "id": str(doc["_id"]),
         "title": doc["title"],
         "description": doc.get("description", ""),
+        "status": doc.get("status", "pending"),
         "created_at": doc["created_at"].isoformat(),
     })
 
